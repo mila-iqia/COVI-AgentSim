@@ -4,6 +4,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import pathlib
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import DotProduct, WhiteKernel, RBF
+
 # pd.set_option('display.float_format', '{:.6f}'.format)
 
 MEAN_HOURLY_WAGE = 27.67
@@ -309,6 +312,51 @@ def run(data, path, compare="app_adoption"):
     work_hours_mean = work_hours_df.mean(axis=0)
     work_hours_stderr = work_hours_df.sem(axis=0)
 
+    # mobility factor plot
+    fig = plt.figure(figsize=(15, 10))
+
+    kernel = RBF(length_scale=1.0, length_scale_bounds=(1e-1, 10.0))
+    gp_regressors = {}
+    max_work_hours = work_hours_df.max().max()
+
+    for method in agg_daly_df.columns:
+        gp_regressors[method] = GaussianProcessRegressor(
+            kernel=kernel, random_state=0).fit(
+                work_hours_df[method], agg_daly_df[method])
+        X_plot = np.linspace(0, max_work_hours, 10000)[:, None]
+        y_gpr, y_std = gp_regressors[method].predict(X_plot, return_std=True)
+
+        plt.plot(X_plot, y_gpr, label=method_to_labels[method],
+                 color=method_to_colors[method])
+        plt.fill_between(X_plot[:, 0], y_gpr - y_std, y_gpr + y_std)
+        plt.scatter(work_hours_df[method], agg_daly_df[method],
+                    label=method_to_labels[method],
+                    color=method_to_colors[method])
+
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+    # grids
+    plt.grid(True, axis='x', alpha=0.3)
+    plt.grid(True, axis='y', alpha=0.3)
+    plt.xlabel('Work Hours Foregone Per Person', fontsize=20)
+    plt.ylabel('DALYs Foregone Per Person', fontsize=20)
+    plt.legend(prop={'size': 15}, bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.title('Health-Economic costs of CT methods @ ' + str(adoption_rate) +
+              '% Adoption Rate, scatter',
+              fontsize=24)
+    plt.tight_layout()
+
+    # save in daly_data folder
+    save_path = ('plotting_pareto_mobility.png')
+    fig.savefig(os.path.join(path, save_path))
+    print('Figure saved to plotting_pareto_mobility.png')
+
+    # save daly and work hours dfs
+    save_path_csv_dalys = ('pareto_mobility_dalys' + str(adoption_rate))
+    agg_daly_df.to_csv(os.path.join(path, save_path_csv_dalys))
+    save_path_csv_work = ('pareto_mobility_work' + str(adoption_rate))
+    work_hours_df.to_csv(os.path.join(path, save_path_csv_work))
+
     # generate figure 9 (work hours and total DALYs)
     plot_figure_nine(agg_daly_mean, work_hours_mean, pop_size,
                      method_to_labels, method_to_colors, work_hours_stderr,
@@ -373,20 +421,31 @@ def run(data, path, compare="app_adoption"):
 
     # list of alternating mean and stderr
     methods = method_keys.values()
+    print("###################################################################")
+    print("###################################################################")
+    print('methods: ')
+    print(methods)
 
     print("###################################################################")
     print("###################################################################")
     print('agg_daly_mean keys: ')
     print(agg_daly_mean.keys())
 
+    delta_keys = [k for k in agg_daly_mean.keys() if 'delta' in k]
+
     agg_daly_cols = [(agg_daly_mean[method], agg_daly_stderr[method]) for
-                     method in methods]
+                     method in delta_keys]
     agg_daly_cols = [col for tup in agg_daly_cols for col in tup]
+    print("###################################################################")
+    print("###################################################################")
+    print('agg_daly_cols: ')
+    print(agg_daly_cols)
+
     agg_daly_diff = pd.DataFrame(
         agg_daly_cols,
         columns=['delta DALYs'],
         index=pd.MultiIndex.from_product(
-            [[val for val in methods if "delta" in val],
+            [[val for val in delta_keys],
              ['mean', 'stderr']]
                                          )
                                  )
@@ -473,8 +532,8 @@ def run(data, path, compare="app_adoption"):
     #                                               )
 
     # list of columns alternating between mean and stderr
-    work_hours_cols = [(work_hours_mean[method], work_hours_mean[method]) for
-                       method in methods]
+    work_hours_cols = [(work_hours_mean[method], work_hours_stderr[method]) for
+                       method in delta_keys]
     work_hours_cols = [col for tup in work_hours_cols for col in tup]
     agg_daly_diff['delta TPL'] = work_hours_cols
 
@@ -496,11 +555,11 @@ def run(data, path, compare="app_adoption"):
     table_icer(agg_daly_diff, path)
 
     # generate table L4 (work hours, TPL)
-    table_tpl(work_hours_mean, method_keys, work_hours_stderr, tpl_mean,
+    table_tpl(work_hours_mean, delta_keys, work_hours_stderr, tpl_mean,
               tpl_stderr, path)
 
     # generate table L5 (metrics for age, sex breakdown)
-    table_age_sex_breakdown(method_keys, dalys_pp_age_sex_metrics, path)
+    table_age_sex_breakdown(delta_keys, dalys_pp_age_sex_metrics, path)
 
 
 def table_age_sex_breakdown(method_keys, dalys_pp_age_sex_metrics, path):

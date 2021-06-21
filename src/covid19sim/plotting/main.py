@@ -232,7 +232,8 @@ def main(conf):
                 "humans_intervention_level",
                 "humans_demographics",
                 "work_hours",
-                "adoption_rate"
+                "adoption_rate",
+                "GLOBAL_MOBILITY_SCALING_FACTOR"
             ]
         )
     if "efficiency" in plots:
