@@ -43,8 +43,8 @@ TARGET_R_FOR_NO_TRACING = 1.2 # find the performance of simulations around (defi
 MARGIN = 0.5
 
 METRICS = ['r', 'effective_contacts', 'healthy_contacts']
-# SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY']
-SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM']
+SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM',  'PROPORTION_LAB_TEST_PER_DAY']
+# SENSITIVITY_PARAMETERS = ['ALL_LEVELS_DROPOUT', 'P_DROPOUT_SYMPTOM']
 XMETRICS = ['effective_contacts'] + SENSITIVITY_PARAMETERS
 
 # (optimistic, mdoerate, pessimistic)
@@ -52,7 +52,7 @@ XMETRICS = ['effective_contacts'] + SENSITIVITY_PARAMETERS
 # NOTE: Following is taken from job_scripts/sensitivity_launch_mpic.py
 SENSITIVITY_PARAMETER_RANGE ={
     "ASYMPTOMATIC_RATIO": {
-        "values": [0.20, 0.30, 0.40], # 0.20 0.30 0.40
+        "values": [0.29, 0.35, 0.40, 0.45], # 0.20 0.30 0.40
         "no-effect":[]
     },
     "BASELINE_P_ASYMPTOMATIC": {
@@ -199,19 +199,7 @@ def plot_and_save_grid_sensitivity_analysis(results, path, y_metric):
                 for method in no_effect_on_methods:
                     if method not in cell_methods:
                         fitted_fns[method] = scenario_fitted_fns[method]
-                        # tmp_df = scenario_df[scenario_df['method'] == method]
-                        # tmp_df[parameter] = value
-                        # df = pd.concat([df, tmp_df], axis=0)
 
-                # if NO_TRACING_METHOD not in cell_methods:
-                #     if CONTACT_RANGE is None:
-                #         stable_frames_df = df[df["effective_contacts"].between(stable_point_scenario - MARGIN, stable_point_scenario + MARGIN)]
-                #     else:
-                #         stable_frames_df = df[df["effective_contacts"].between(*CONTACT_RANGE)]
-                # else:
-                #     stable_frames_df, stable_point = find_stable_frames(df, contact_range=CONTACT_RANGE)
-
-                # ax_df = pd.concat([ax_df, stable_frames_df], ignore_index=True, axis=0)
                 plot_fitted_fns_at_stable_point(ax, fitted_fns, value, TARGET_R_FOR_NO_TRACING, colormap)
 
     # set row and column headers

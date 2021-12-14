@@ -33,7 +33,7 @@ SCENARIO_LABELSIZE=25
 SCENARIO_LABELPAD=85
 LABELPAD = 30
 LINESTYLES = ["-", "--"]
-SHAPES = ["^", "s", "P", "D"]
+SHAPES = ["^", "s", "P", "D", "*"]
 
 INTERPOLATION_FN = GPRFit
 
@@ -59,7 +59,7 @@ SENSITIVITY_PARAMETER_RANGE ={
         "no-effect":[]
     },
     "ALL_LEVELS_DROPOUT": {
-        "values": [0.02, 0.08, 0.16, 0.32], # 0.02 0.08 0.16
+        "values": [0.02, 0.16, 0.32], # 0.02 0.08 0.16
         # "values": [0.02, 0.05, 0.10],
         "no-effect":["post-lockdown-no-tracing"]
     },
@@ -88,6 +88,7 @@ DEFAULT_PARAMETER_VALUES = {
     "PROPORTION_LAB_TEST_PER_DAY": 0.001,
     "ALL_LEVELS_DROPOUT": 0.02,
     "P_DROPOUT_SYMPTOM": 0.20,
+    "adoption_rate": 60
 }
 
 NO_TRACING_METHOD = "post-lockdown-no-tracing"
@@ -121,6 +122,7 @@ def plot_and_save_grid_sensitivity_paretos(results, path, SENSITIVITY_PARAMETERS
     nrows = 1
     ncols = len(SENSITIVITY_PARAMETERS)
     fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(27, 18), sharex='col', sharey=True, dpi=DPI, constrained_layout=True, squeeze=False)
+    bbox_extra_artist = []
 
     # plot all
     SCENARIO_PARAMETERS = [DEFAULT_PARAMETER_VALUES[param] for param in  SENSITIVITY_PARAMETERS]
@@ -150,9 +152,10 @@ def plot_and_save_grid_sensitivity_paretos(results, path, SENSITIVITY_PARAMETERS
                     df = pd.concat([df, tmp_df], axis=0)
 
             color_scale = 2.0
-            value_shape = SHAPES[param_index] if parameter != "adoption_rate" else "o"
+            value_shape = SHAPES[param_index]
+            outer_loop = sorted(df['adoption_rate'].unique(), key=lambda x:-x) if parameter != "adoption_rate" else [value]
             xs, ys, yerrs, cs, sigs = [], [], [], [], []
-            for ar in sorted(df['adoption_rate'].unique(), key=lambda x:-x):
+            for ar in outer_loop:
                 color_scale *= 0.5
                 for method in df['method'].unique():
                     selector = (df[['adoption_rate', 'method']] == [ar, method]).all(1)
@@ -162,18 +165,33 @@ def plot_and_save_grid_sensitivity_paretos(results, path, SENSITIVITY_PARAMETERS
                     sigs.append(df[selector]['p-value'].item())
                     cs.append(make_color_transparent(colormap[method], alpha=color_scale))
                     method_ar_pareto[(method, ar, cs[-1])].append([xs[-1], ys[-1]])
-                    ax.errorbar(x=xs[-1], y=ys[-1], yerr=yerrs[-1], color=cs[-1], marker=value_shape, ms=50)
+                    ax.errorbar(x=xs[-1], y=ys[-1], yerr=yerrs[-1], color=cs[-1], marker=value_shape, ms=25)
+                    if 1-sigs[-1] < 0.01:
+                        ax.scatter([xs[-1]], [ys[-1]], marker="*", s=100, color="black", zorder=1000)
 
         # line connecting method-ar points across different sensitivity values
+        if (
+            len(SENSITIVITY_PARAMETERS) == 1
+            and SENSITIVITY_PARAMETERS[0] == "adoption_rate"
+        ):
+            methods = set([(x[0], x[2]) for x in method_ar_pareto.keys()])
+            method_ar_pareto = {(x[0], -1, x[1]): [i for k,v in method_ar_pareto.items() if k[0]==x[0] for i in v ] for x in methods }
+
         for (method, ar, color), series in method_ar_pareto.items():
             xs, ys = list(zip(*series))
             ax.plot(xs, ys, linestyle=":", color=color)
+            # arrows ; Note: values are assumed in order ranging from optimistic to pessimistic
+            for (x1, y1), (x2, y2) in zip(series, series[1:]):
+                mid_point = ((x1+x2)/2, (y1+y2)/2)
+                dx = (0.1 * (x1-x2), 0.1 * (y1-y2))
+                end_point = (mid_point[0] + dx[0], mid_point[1] + dx[1])
+                ax.annotate("", xy=end_point, xycoords='data', xytext=mid_point, textcoords='data',
+                            arrowprops=dict(arrowstyle="-|>", connectionstyle="arc3", color=color, lw=5, mutation_scale=50,))
 
         # legend for shapes - sensitivity values
-        if parameter != "adoption_rate":
-            legend0 = []
-            for param_index, value in enumerate(values):
-                legend0.append(Line2D([], [], color='black', marker=SHAPES[param_index], linestyle="None", markersize=10, label=value))
+        legend0 = []
+        for param_index, value in enumerate(values):
+            legend0.append(Line2D([], [], color='black', marker=SHAPES[param_index], linestyle="None", markersize=10, label=value))
 
         ax.legend(handles=legend0, ncol=1, fontsize=30, loc="top right", fancybox=True)
 
@@ -192,15 +210,21 @@ def plot_and_save_grid_sensitivity_paretos(results, path, SENSITIVITY_PARAMETERS
         method_label = labelmap[method]
         color = colormap[method]
         legend1.append(Line2D([0, 1], [0, 0], color=color, linestyle="-", label=method_label, linewidth=3))
+    lgd1 = fig.legend(handles=legend1, ncol=len(legend1), fontsize=30, loc="lower center", fancybox=True, bbox_to_anchor=(0.5, 0), bbox_transform=fig.transFigure)
+    bbox_extra_artist.append(lgd1)
 
     # legend for transparency - adoption rate
-    legend2 = []
-    ar_color = [(x[1], x[2]) for x in method_ar_pareto.keys() if x[0] == method]
-    for ar, color in ar_color:
-        legend2.append(Line2D([0,1], [0,0], color=color, linestyle="-", label=ar, linewidth=6))
+    if not (
+        len(SENSITIVITY_PARAMETERS) == 1
+        and SENSITIVITY_PARAMETERS[0] == "adoption_rate"
+    ):
+        legend2 = []
+        ar_color = [(x[1], x[2]) for x in method_ar_pareto.keys() if x[0] == method]
+        for ar, color in ar_color:
+            legend2.append(Line2D([0,1], [0,0], color=color, linestyle="-", label=ar, linewidth=6))
 
-    lgd1 = fig.legend(handles=legend1, ncol=len(legend1), fontsize=30, loc="lower center", fancybox=True, bbox_to_anchor=(0.5, 0), bbox_transform=fig.transFigure)
-    lgd2 = fig.legend(handles=legend1, ncol=len(legend2), fontsize=30, loc="lower center", fancybox=True, bbox_to_anchor=(0.5, 0), bbox_transform=fig.transFigure)
+        lgd2 = fig.legend(handles=legend2, ncol=len(legend2), fontsize=30, loc="lower center", fancybox=True, bbox_to_anchor=(0.25, 0), bbox_transform=fig.transFigure)
+        bbox_extra_artist.append(lgd2)
 
     # ylim
     y_min = np.min([np.min(ax.get_ylim()) for ax in axs.flatten()])
@@ -224,7 +248,7 @@ def plot_and_save_grid_sensitivity_paretos(results, path, SENSITIVITY_PARAMETERS
     # save
     fig.tight_layout(rect=[0, 0.08, 1, 1])
     filename = "paretos_r_C" + f"_{trend_fit}_fit"
-    filepath = save_figure(fig, basedir=path, folder="grid_sensitivity", filename=f'{filename}', bbox_extra_artists=(lgd1, lgd2,), bbox_inches='tight')
+    filepath = save_figure(fig, basedir=path, folder="grid_sensitivity", filename=f'{filename}', bbox_extra_artists=tuple(bbox_extra_artist), bbox_inches='tight')
     print(f"Sensitivity analysis  (Paretos) saved at {filepath}")
 
 def load_models(models_folder, trend_fit=""):
@@ -301,7 +325,7 @@ def run(data, plot_path, compare=None, **kwargs):
     """
     use_extracted_data = kwargs.get('use_extracted_data', False)
     sensitivity_parameter = kwargs.get('sensitivity_parameter', None)
-    TREND_FIT = "linear" # linear, ""
+    TREND_FIT = "polynomial" # linear, ""
     MAIN_FOLDER = plot_path.parent.name
     if (
         sensitivity_parameter == "user-behavior"
@@ -318,7 +342,6 @@ def run(data, plot_path, compare=None, **kwargs):
         or "sensitivity_ARx" in MAIN_FOLDER
     ):
         SENSITIVITY_PARAMETERS = ['adoption_rate']
-
     else:
         raise ValueError("Sensitivity parameter not specified..")
 
@@ -335,12 +358,14 @@ def run(data, plot_path, compare=None, **kwargs):
         print(f"Plot path: {str(plot_path)}")
         results = {}
         for scenario_folder in plot_path.parent.iterdir():
+            if not scenario_folder.is_dir():
+                continue
             for subfolder in scenario_folder.iterdir():
                 if "scatter" not in subfolder.name:
                     continue
                 print(f"Currently at: {str(subfolder)}.")
                 results_folder = subfolder / "normalized_mobility/plots/normalized_mobility/"
-                models_folder = results_folder / "models" #"models_r_vs_effective_contacts"
+                models_folder = results_folder / "models_r_vs_effective_contacts"
                 models = load_models(models_folder, trend_fit=TREND_FIT)
                 full_data = pd.read_csv(list(results_folder.glob("full_extracted_data_AR_*.csv"))[-1])
 
@@ -364,6 +389,7 @@ def run(data, plot_path, compare=None, **kwargs):
 
         # extract points for pareto
         results  = get_offsets_and_contacts(results, SENSITIVITY_PARAMETERS)
+        results = results.loc[:,~results.columns.duplicated()]
         results.to_csv(str(filename))
 
     print("Unique adoption rates: ", results['adoption_rate'].unique())
