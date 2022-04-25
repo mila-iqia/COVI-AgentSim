@@ -1032,7 +1032,7 @@ class Tracker(object):
                 "from_is_asymptomatic": None if not source=="human" else from_human.is_asymptomatic,
                 "from_has_app": None if not source == "human" else from_human.has_app,
                 "from_follows_recommendation": None if not source == "human" else from_human.intervened_behavior._follow_recommendation_today,
-                "from_behaivor_reason": from_human.intervened_behavior.current_behavior_reason,
+                "from_behaivor_reason": None if not source == "human" else from_human.intervened_behavior.current_behavior_reason,
                 "to": to_human.name,
                 "to_risk": to_human.risk,
                 "to_risk_level": to_human.risk_level,
