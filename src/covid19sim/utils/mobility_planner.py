@@ -1290,7 +1290,7 @@ def _presample_activity(type_of_activity, conf, rng, n_days):
         total_days_sampled += days
         if total_days_sampled >= n_days:
             break
-        does_activity[days] = _sample_activity_duration(type_of_activity, conf, rng)
+        does_activity[total_days_sampled] = _sample_activity_duration(type_of_activity, conf, rng)
 
     return does_activity
 
