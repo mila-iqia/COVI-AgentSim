@@ -6,7 +6,12 @@ These are logic engines for doing tracing.
 import typing
 from itertools import islice
 from covid19sim.epidemiology.symptoms import MODERATE, SEVERE, EXTREMELY_SEVERE
-from covid19sim.inference.heavy_jobs import DummyMemManager
+
+try:
+    from covid19sim.inference.heavy_jobs import DummyMemManager
+except Exception as e:
+    print(f"Trouble loading ctt. Following error was encountered: {e}")
+    
 from covid19sim.epidemiology.symptoms import STR_TO_SYMPTOMS
 
 if typing.TYPE_CHECKING:

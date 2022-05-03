@@ -20,8 +20,13 @@ from covid19sim.plotting.plot_rt import PlotRt
 from covid19sim.utils.utils import log, _get_seconds_since_midnight
 from covid19sim.utils.constants import AGE_BIN_WIDTH_5, ALL_LOCATIONS, SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.epidemiology.symptoms import MILD, MODERATE, SEVERE, EXTREMELY_SEVERE
-from covid19sim.inference.server_utils import DataCollectionServer, DataCollectionClient, \
-    default_datacollect_frontend_address
+
+try:
+    from covid19sim.inference.server_utils import DataCollectionServer, DataCollectionClient, \
+        default_datacollect_frontend_address
+except Exception as e:
+    print(f"Trouble laoding inference engine. Following error was encoundered: {e}.")
+    
 from covid19sim.utils.utils import log, copy_obj_array_except_env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_MINUTE
 from covid19sim.interventions.tracing import Heuristic

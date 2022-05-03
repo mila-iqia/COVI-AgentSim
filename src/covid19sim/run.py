@@ -19,7 +19,11 @@ from covid19sim.locations.city import City
 from covid19sim.utils.env import Env
 from covid19sim.utils.constants import SECONDS_PER_DAY, SECONDS_PER_HOUR
 from covid19sim.log.console_logger import ConsoleLogger
-from covid19sim.inference.server_utils import DataCollectionServer
+try:
+    from covid19sim.inference.server_utils import DataCollectionServer
+except Exception as e:
+    print(f"Trouble loading ctt. Following error was encountered: {e}")
+    
 from covid19sim.utils.utils import dump_conf, dump_tracker_data, extract_tracker_data, parse_configuration, log
 
 def _get_intervention_string(conf):
@@ -178,6 +182,7 @@ def main(conf: DictConfig):
     # (baseball-cards) write full simulation data
     if hasattr(city, "tracker") and \
             hasattr(city.tracker, "collection_server") and \
+            'DataCollectionServer' in globals() and \
             isinstance(city.tracker.collection_server, DataCollectionServer) and \
             city.tracker.collection_server is not None:
         city.tracker.collection_server.stop_gracefully()
