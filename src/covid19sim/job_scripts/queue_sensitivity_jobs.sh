@@ -1,3 +1,4 @@
+
 #!/bin/bash
 TYPE=$1 # "user-behavior-Lx", "user-behavior-Sx", "test-quantity", "asymptomatic-infection-ratio", "adoption-rate"
 ACTION=$2 # "plot" or "launch-jobs"
@@ -147,7 +148,7 @@ if [ "$TYPE" == "adoption-rate" ]; then
   Ax=${BASELINE_P_ASYMPTOMATIC[$BASELINE_P_ASYMPTOMATIC_DEFAULT_INDEX]}
   Tx=${PROPORTION_LAB_TEST_PER_DAY[$PROPORTION_LAB_TEST_PER_DAY_DEFAULT_INDEX]}
   FOLDER_NAME=${NAME}/sensitivity_ARx
-  INTERVENTIONS=(transformer) # (bdt1 heuristicv4 transformer)
+  INTERVENTIONS=(bdt1 heuristicv4)
 
   if [ "$ACTION" == "launch-jobs" ]; then
 
@@ -156,6 +157,10 @@ if [ "$TYPE" == "adoption-rate" ]; then
     else
       ARRAY=(1 2 4)
     fi
+
+    # post-lockdown-no-tracing
+    ./launch_mobility_experiment.sh Main -1 $Ax $Lx $Sx $Tx \
+              post-lockdown-no-tracing $FOLDER_NAME $TYPE $N_PEOPLE $INIT
 
     for intervention in "${INTERVENTIONS[@]}"
     do
