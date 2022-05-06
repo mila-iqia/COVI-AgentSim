@@ -1,0 +1,4 @@
+seed:
+  sample: range
+  from:
+    [100001, 1000000, 1]
