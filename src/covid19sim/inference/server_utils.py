@@ -20,7 +20,12 @@ import typing
 import xdelta3
 import zmq
 from pathlib import Path
-from ctt.inference.infer import InferenceEngine
+
+try:
+    from ctt.inference.infer import InferenceEngine
+except Exception as e:
+    print(f"Trouble loading ctt. Following error was encountered: {e}")
+
 
 import covid19sim.inference.clustering.base
 import covid19sim.inference.message_utils
@@ -425,7 +430,6 @@ class InferenceEngineWrapper(InferenceEngine):
             assert len(experiment_subdirectories) == 1, "should only have one dir per experiment zip"
             experiment_directory = experiment_subdirectories[0]
         super().__init__(experiment_directory, *args, **kwargs)
-
 
 class DataCollectionWorker(BaseWorker):
     """
