@@ -316,9 +316,9 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             y_noise = 0.2
             p3 = [p1[0] + x_noise + 0.01, (p1[1] + p2[1])/2.0]
             # arrow
-            ax.annotate(s='', xy=(p1[0] + x_noise, p1[1]), xytext=(p2[0] + x_noise, p2[1]), arrowprops=dict(arrowstyle='<->', linestyle="-", linewidth=1, zorder=1000, mutation_scale=20))
+            ax.annotate(text='', xy=(p1[0] + x_noise, p1[1]), xytext=(p2[0] + x_noise, p2[1]), arrowprops=dict(arrowstyle='<->', linestyle="-", linewidth=1, zorder=1000, mutation_scale=20))
             text=f"{res1[0]:0.2f} $\pm$ {res1[1]: 0.2f}\n{1-res1[2]:0.1e}"
-            ax.annotate(s=text, xy=p3, xytext=(p3[0] + x_offset, p3[1]-y_noise), fontsize=ANNOTATION_FONTSIZE, \
+            ax.annotate(text=text, xy=p3, xytext=(p3[0] + x_offset, p3[1]-y_noise), fontsize=ANNOTATION_FONTSIZE, \
                         fontweight='black', bbox=dict(facecolor='none', edgecolor='black'), zorder=1000, verticalalignment="center", \
                         arrowprops=dict(arrowstyle="->"))
             x_offset += 1.0
@@ -343,7 +343,7 @@ def plot_and_save_mobility_scatter(results, uptake_rate, xmetric, ymetric, path,
             text = "$\Delta \hat{R} \pm \sigma$\np-value"
         else:
             text = "advantage $\pm$ stderr\np-value"
-        ax.annotate(s=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='normal', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
+        ax.annotate(text=text, xy=(ax.get_xlim()[1]-2, 0.5), fontsize=ANNOTATION_FONTSIZE, fontweight='normal', bbox=dict(facecolor='none', edgecolor='black'), zorder=10)
 
     xlabel = get_metric_label(xmetric)
     ylabel = get_metric_label(ymetric)

@@ -1,4 +1,3 @@
-
 #!/bin/bash
 TYPE=$1 # "user-behavior-Lx", "user-behavior-Sx", "test-quantity", "asymptomatic-infection-ratio", "adoption-rate"
 ACTION=$2 # "plot" or "launch-jobs"
@@ -9,7 +8,7 @@ N_PEOPLE=${5:-5000}
 INIT=${6:-0.004}
 
 # only used for outputing plot path
-BASEDIR=/home/nrahaman/python/covi-simulator/exp/sensitivity_v3
+BASEDIR=/home/pratgupt/scratch/covid19sim/
 
 # values
 ALL_LEVELS_DROPOUT=(0.02 0.08 0.16 0.32 0.64)
@@ -32,7 +31,7 @@ if [ "$TYPE" == "user-behavior-Lx" ]; then
   Ax=${BASELINE_P_ASYMPTOMATIC[$BASELINE_P_ASYMPTOMATIC_DEFAULT_INDEX]}
   Tx=${PROPORTION_LAB_TEST_PER_DAY[$PROPORTION_LAB_TEST_PER_DAY_DEFAULT_INDEX]}
   FOLDER_NAME=${NAME}/sensitivity_Lx
-  INTERVENTIONS=(transformer) #(bdt1 heuristicv4) #(transformer) # (bdt1 heuristicv4 transformer)
+  INTERVENTIONS=(bdt1 heuristicv4) #(transformer) # (bdt1 heuristicv4 transformer)
 
   if [ "$ACTION" == "launch-jobs" ]; then
 
@@ -91,7 +90,7 @@ if [ "$TYPE" == "user-behavior-Sx" ]; then
   Ax=${BASELINE_P_ASYMPTOMATIC[$BASELINE_P_ASYMPTOMATIC_DEFAULT_INDEX]}
   Tx=${PROPORTION_LAB_TEST_PER_DAY[$PROPORTION_LAB_TEST_PER_DAY_DEFAULT_INDEX]}
   FOLDER_NAME=${NAME}/sensitivity_Sx
-  INTERVENTIONS=(transformer) #(heuristicv4) #(transformer) #(heuristicv4 transformer)
+  INTERVENTIONS=(heuristicv4) #(transformer) # (bdt1 heuristicv4 transformer)
 
   if [ "$ACTION" == "launch-jobs" ]; then
     #
@@ -148,7 +147,7 @@ if [ "$TYPE" == "adoption-rate" ]; then
   Ax=${BASELINE_P_ASYMPTOMATIC[$BASELINE_P_ASYMPTOMATIC_DEFAULT_INDEX]}
   Tx=${PROPORTION_LAB_TEST_PER_DAY[$PROPORTION_LAB_TEST_PER_DAY_DEFAULT_INDEX]}
   FOLDER_NAME=${NAME}/sensitivity_ARx
-  INTERVENTIONS=(bdt1 heuristicv4)
+  INTERVENTIONS=(bdt1 heuristicv4) #(transformer) # (bdt1 heuristicv4 transformer)
 
   if [ "$ACTION" == "launch-jobs" ]; then
 
@@ -177,10 +176,11 @@ if [ "$TYPE" == "adoption-rate" ]; then
 
 
   if [ "$ACTION" == "plot" ]; then
+    sbatch run_plot_sensitivity.sh $BASEDIR/$FOLDER_NAME/sensitivity_S_Main_${N_PEOPLE}_init_${INIT}_UPTAKE_-1/scatter_Ax_${Ax}_Lx_${Lx}_Sx_${Sx}_test_${Tx}/ # post-lockdown-no-tracing
     for ARx in "${APP_UPTAKE[@]}"
     do
       if [ "$DEFAULTS" -eq "1" ]; then
-        sbatch run_plot_sensitivity.sh Main $ARx $Ax $Lx $Sx $Tx XX $FOLDER_NAME $NAME $N_PEOPLE $INIT
+        sbatch run_plot_sensitivity.sh $BASEDIR/$FOLDER_NAME/sensitivity_S_Main_${N_PEOPLE}_init_${INIT}_UPTAKE_${ARx}/scatter_Ax_${Ax}_Lx_${Lx}_Sx_${Sx}_test_${Tx}/
       else
         echo "python main.py plot=normalized_mobility path=$BASEDIR/$FOLDER_NAME/sensitivity_S_Main_${N_PEOPLE}_init_${INIT}_UPTAKE_${ARx}/scatter_Ax_${Ax}_Lx_${Lx}_Sx_${Sx}_test_${Tx}/normalized_mobility load_cache=False use_cache=False normalized_mobility_use_extracted_data=False"
       fi
@@ -194,7 +194,7 @@ if [ "$TYPE" == "test-quantity" ]; then
   Sx=${P_DROPOUT_SYMPTOM[$P_DROPOUT_SYMPTOM_DEFAULT_INDEX]}
   Ax=${BASELINE_P_ASYMPTOMATIC[$BASELINE_P_ASYMPTOMATIC_DEFAULT_INDEX]}
   FOLDER_NAME=${NAME}/sensitivity_Tx
-  INTERVENTIONS=(transformer) #(bdt1 heuristicv4) #(transformer) # (bdt1 heuristicv4 transformer)
+  INTERVENTIONS=(bdt1 heuristicv4) #(transformer) # (bdt1 heuristicv4 transformer)
 
   if [ "$ACTION" == "launch-jobs" ]; then
 
@@ -204,11 +204,11 @@ if [ "$TYPE" == "test-quantity" ]; then
       ARRAY=(0 1 2 4)
     fi
 
-    # for x in "${ARRAY[@]}"
-    # do
-    #   ./launch_mobility_experiment.sh Main -1 $Ax $Lx $Sx ${PROPORTION_LAB_TEST_PER_DAY[$x]} \
-    #             post-lockdown-no-tracing $FOLDER_NAME $TYPE $N_PEOPLE $INIT
-    # done
+    for x in "${ARRAY[@]}"
+    do
+      ./launch_mobility_experiment.sh Main -1 $Ax $Lx $Sx ${PROPORTION_LAB_TEST_PER_DAY[$x]} \
+                post-lockdown-no-tracing $FOLDER_NAME $TYPE $N_PEOPLE $INIT
+    done
 
     # 30% AR
     for intervention in "${INTERVENTIONS[@]}"
@@ -256,7 +256,7 @@ if [ "$TYPE" == "asymptomatic-infection-ratio" ]; then
   Tx=${PROPORTION_LAB_TEST_PER_DAY[$PROPORTION_LAB_TEST_PER_DAY_DEFAULT_INDEX]}
   Ax=${BASELINE_P_ASYMPTOMATIC[$BASELINE_P_ASYMPTOMATIC_DEFAULT_INDEX]}
   FOLDER_NAME=${NAME}/sensitivity_AIRx
-  INTERVENTIONS=(transformer) #(bdt1 heuristicv4) #(transformer) # (bdt1 heuristicv4 transformer)
+  INTERVENTIONS=(bdt1 heuristicv4) #(transformer) # (bdt1 heuristicv4 transformer)
 
   if [ "$ACTION" == "launch-jobs" ]; then
 
@@ -316,7 +316,7 @@ if [ "$TYPE" == "asymptomatic-proportion" ]; then
   Sx=${P_DROPOUT_SYMPTOM[$P_DROPOUT_SYMPTOM_DEFAULT_INDEX]}
   Tx=${PROPORTION_LAB_TEST_PER_DAY[$PROPORTION_LAB_TEST_PER_DAY_DEFAULT_INDEX]}
   FOLDER_NAME=${NAME}/sensitivity_Ax
-  INTERVENTIONS=(transformer) # (bdt1 heuristicv4 transformer)
+  INTERVENTIONS=(bdt1 heuristicv4) #(transformer) # (bdt1 heuristicv4 transformer)
 
   if [ "$ACTION" == "launch-jobs" ]; then
 
@@ -326,11 +326,11 @@ if [ "$TYPE" == "asymptomatic-proportion" ]; then
       ARRAY=(0 1 3 4)
     fi
 
-    # for x in "${ARRAY[@]}"
-    # do
-    #   ./launch_mobility_experiment.sh Main -1 ${BASELINE_P_ASYMPTOMATIC[$x]} $Lx $Sx $Tx \
-    #             post-lockdown-no-tracing $FOLDER_NAME $TYPE $N_PEOPLE $INIT
-    # done
+    for x in "${ARRAY[@]}"
+    do
+      ./launch_mobility_experiment.sh Main -1 ${BASELINE_P_ASYMPTOMATIC[$x]} $Lx $Sx $Tx \
+                post-lockdown-no-tracing $FOLDER_NAME $TYPE $N_PEOPLE $INIT
+    done
 
     # 30% AR
     for intervention in "${INTERVENTIONS[@]}"

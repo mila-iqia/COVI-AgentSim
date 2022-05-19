@@ -12,6 +12,7 @@
 
 module purge
 module load python/3.8.2
+module load scipy-stack
 source ~/{env_name}/bin/activate
 
 export PYTHONUNBUFFERED=1
