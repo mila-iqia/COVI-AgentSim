@@ -185,7 +185,7 @@ def find_all_pairs_offsets_and_stddev(fitted_fns, x_range=[2,10]):
         plot = True
         reference_fn = fitted_fns[method1]
         y1 = reference_fn.evaluate_y_for_x(x1)
-        assert abs(y1 - 1.0) < 1e-2, f"encountered incorrect y coordinate. Expected 1.0. Got {y1}"
+        # assert abs(y1 - 1.0) < 1e-2, f"encountered incorrect y coordinate. Expected 1.0. Got {y1}"
         for _, method2 in method_x[idx+1:]:
             comparator_fn = fitted_fns[method2]
             y2 = comparator_fn.evaluate_y_for_x(x1)
