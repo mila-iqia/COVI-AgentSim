@@ -121,7 +121,8 @@ class Location(simpy.Resource):
         self.P_CONTACT = np.array(conf[f'P_CONTACT_MATRIX_{key}'])
         self.ADJUSTED_CONTACT_MATRIX = np.array(conf[f'ADJUSTED_CONTACT_MATRIX_{key}'])
         self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP = self.ADJUSTED_CONTACT_MATRIX.sum(axis=0)
-        self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP = _adjust_surveyed_contacts_to_regional_contacts(self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP, conf, self.MEAN_DAILY_KNOWN_CONTACTS)
+        if location_type != "SCHOOL": # the base population for school is not clear so we don't renormalize it
+            self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP = _adjust_surveyed_contacts_to_regional_contacts(self.MEAN_DAILY_KNOWN_CONTACTS_FOR_AGEGROUP, conf, self.MEAN_DAILY_KNOWN_CONTACTS)
 
         # duration matrices
         # self.MEAN_DAILY_CONTACT_DURATION_SECONDS = np.array(conf[f'{key}_CONTACT_DURATION_NORMAL_MEAN_SECONDS_MATRIX'])

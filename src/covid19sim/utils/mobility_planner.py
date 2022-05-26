@@ -291,7 +291,8 @@ class MobilityPlanner(object):
                 full_schedule.append(schedule)
                 # (debug)
                 if last_activity.duration == 0:
-                    warnings.warn(f"{self.human} has 0 duration {last_activity}\nschedule:{schedule}\npenultimate:{full_schedule[-2]}")
+                    # warnings.warn(f"{self.human} has 0 duration {last_activity}\nschedule:{schedule}\npenultimate:{full_schedule[-2]}")
+                    pass
 
             assert all(schedule[-1].name == "sleep" for schedule in full_schedule), "sleep not found as last element in a schedule"
             assert len(full_schedule) == n_days, "not enough schedule prepared"
@@ -513,7 +514,7 @@ class MobilityPlanner(object):
 
             MIN_DURATION = min(self.conf['INFECTION_DURATION'], self.conf['MIN_MESSAGE_PASSING_DURATION'])
             socials = [x for x in todays_activities if x.name == "socialize"]
-            assert len(socials) <=1, "more than one socials on one day are not allowed in preplanned scheduling"
+            # assert len(socials) <=1, "more than one socials on one day are not allowed in preplanned scheduling"
             if socials and socials[0].duration >= MIN_DURATION:
                 self.invitation["sent"].add(today)
                 self.invite(socials[0], self.human.known_connections)
@@ -1290,7 +1291,7 @@ def _presample_activity(type_of_activity, conf, rng, n_days):
         total_days_sampled += days
         if total_days_sampled >= n_days:
             break
-        does_activity[days] = _sample_activity_duration(type_of_activity, conf, rng)
+        does_activity[total_days_sampled] = _sample_activity_duration(type_of_activity, conf, rng)
 
     return does_activity
 

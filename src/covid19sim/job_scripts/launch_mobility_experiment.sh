@@ -21,13 +21,13 @@ if [[ ! -z "${12}" ]]; then
 fi
 
 # simulation days
-SIM_DAYS=60
+SIM_DAYS=75
 
 # essentials
 ENV_RELATIVE_PATH=covid19
 COVISIM_REPO=/home/$USER/simulator
 SLURM_LOG_DIR=$SCRATCH/job_logs
-SIM_OUTPUT_BASEDIR=$SCRATCH/
+SIM_OUTPUT_BASEDIR=$SCRATCH/covid19sim
 # SIM_OUTPUT_BASEDIR=/home/nrahaman/python/covi-simulator/exp/sensitivity_v3 ## NASIM
 EMAIL=pg2455@columbia.edu # to be notified of every run
 
@@ -88,8 +88,7 @@ if [ "$INTERVENTION" == "post-lockdown-no-tracing" ] || [ "$INTERVENTION" == "bd
     intervention=$INTERVENTION  global_mobility_scaling_factor_range=${glomo_range} \
     n_people=${n_people} init_fraction_sick=$init time=$TIME APP_UPTAKE=$UPTAKE \
     BASELINE_P_ASYMPTOMATIC=$ASYMP PROPORTION_LAB_TEST_PER_DAY=$TEST ASYMPTOMATIC_INFECTION_RATIO=${ASYMP_INFECTION_RATIO} \
-    P_DROPOUT_SYMPTOM=${P_DROPOUT_SYMPTOM} ALL_LEVELS_DROPOUT=${ALL_LEVELS_DROPOUT}  seeds=9_seeds n_search=${n_search} CONTAGION_KNOB=27.5 cpus=10 #\
-    # dev=True pure_command_output_file=${TYPE}_${n_people}_${init}.txt ## NASIM
+    P_DROPOUT_SYMPTOM=${P_DROPOUT_SYMPTOM} ALL_LEVELS_DROPOUT=${ALL_LEVELS_DROPOUT}  seeds=sim_val_seeds n_search=${n_search} CONTAGION_KNOB=27.5 cpus=10 #\ dev=True pure_command_output_file=${TYPE}_${n_people}_${init}.txt ## NASIM
 fi
 
 if [ "$INTERVENTION" == "transformer" ]; then

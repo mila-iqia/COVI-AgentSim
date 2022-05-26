@@ -16,7 +16,10 @@ from orderedset import OrderedSet
 from covid19sim.utils.utils import compute_distance, _get_random_area, relativefreq2absolutefreq, _convert_bin_5s_to_bin_10s, log
 from covid19sim.utils.demographics import get_humans_with_age, assign_households_to_humans, create_locations_and_assign_workplace_to_humans
 from covid19sim.log.track import Tracker
-from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
+try:
+    from covid19sim.inference.heavy_jobs import batch_run_timeslot_heavy_jobs
+except Exception as e:
+    print(f"Trouble loading ctt. Following error was encountered: {e}")
 from covid19sim.interventions.tracing import BaseMethod
 from covid19sim.inference.message_utils import UIDType, UpdateMessage, RealUserIDType
 from covid19sim.distribution_normalization.dist_utils import get_rec_level_transition_matrix
