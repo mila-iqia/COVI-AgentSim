@@ -1,0 +1,25 @@
+#
+post-lockdown-no-tracing: True
+
+# BDT
+bdt1: True
+
+# heuristic
+heuristicv1: False
+heuristicv4: True
+
+# ST
+GENIAL-WIND-744: False
+FLOWING-STAR-753: True
+STOIC-MICROWAVE-755: False
+
+# DS
+PLEASANT-SUNSET-746: False
+GLAD-LAKE-754: False
+FLOWING-DRAGON-758: True
+
+# LR
+RADIANT-FOG-751: False
+
+# MLP
+ROYAL-ENERGY-749: False
