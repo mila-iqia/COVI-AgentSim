@@ -545,7 +545,7 @@ def get_sensitivity_label(name):
         return "Asymptomatic population as % of population"
 
     if name == "adoption_rate":
-        return "Adoption Rate \n (% of population)"
+        return "Adoption Rate (% of population)"
 
     if name == "ASYMPTOMATIC_INFECTION_RATIO":
         return "Infectiousness ratio of asymptomatic cases "
