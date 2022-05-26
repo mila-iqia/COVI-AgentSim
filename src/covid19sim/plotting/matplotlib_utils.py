@@ -376,7 +376,7 @@ def plot_heatmap_of_advantages(data, labelmap, USE_MATH_NOTATION=False):
 
     return fig
 
-def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None, bbox_inches='tight', pad_inches=None):
+def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None, bbox_inches='tight', pad_inches=None, save_tiff=False):
     """
     Saves figure at `basedir/folder/filename`. Creates `folder` if it doesn't exist.
 
@@ -406,6 +406,8 @@ def save_figure(figure, basedir, folder, filename, bbox_extra_artists=None, bbox
     filepath = str(folder / filename)
 
     figure.savefig(filepath, bbox_inches=bbox_inches, bbox_extra_artists=bbox_extra_artists, pad_inches=pad_inches)
+    if save_tiff:
+        figure.savefig(f"{filepath}.tiff", bbox_inches=bbox_inches, bbox_extra_artists=bbox_extra_artists, pad_inches=pad_inches)
     return filepath
 
 def get_adoption_rate_label_from_app_uptake(uptake):
