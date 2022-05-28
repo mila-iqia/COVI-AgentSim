@@ -43,14 +43,14 @@ def plot_all(ax, list_of_all_data, list_of_all_methods, key, labelmap, colormap,
         ax = _plot_mean_with_stderr_bands_of_series(ax, all_series, label, color, plot_quantiles=False, bootstrap=True, window=4, confidence_level=1)
     return ax
 
-def plot_and_save_single_metric(ax, list_of_all_data, list_of_all_methods, key, labelmap, colormap, y_title, path, adoption_rate, plot_percentages=False):
+def plot_and_save_single_metric(ax, list_of_all_data, list_of_all_methods, key, labelmap, colormap, y_title, path, adoption_rate, plot_percentages=False, save_tiff=False):
     """
     """
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(15,10), dpi=DPI)
 
     ax = plot_all(ax, list_of_all_data, list_of_all_methods, key=key, labelmap=labelmap, colormap=colormap, plot_percentages=plot_percentages)
     ax = add_bells_and_whistles(ax, y_title=y_title, x_tick_gap=TICKGAP, x_lower_lim=0, y_lower_lim=0, legend_loc="upper left", x_title="Days since outbreak")
-    filepath = save_figure(fig, basedir=path, folder='episim_series', filename=f'{key}_AR_{adoption_rate}')
+    filepath = save_figure(fig, basedir=path, folder='episim_series', filename=f'{key}_AR_{adoption_rate}', save_tiff=save_tiff)
 
 
 def plot_and_save_r_characteristics(list_of_all_data, list_of_all_methods, uptake_rate, path):
@@ -130,7 +130,7 @@ def plot_and_save_epi_characteristics(list_of_all_data, list_of_all_methods, upt
     y_title = "Cumulative cases (%)"
     ax = plot_all(ax, list_of_all_data, list_of_all_methods, key=key, labelmap=labelmap, colormap=colormap, plot_percentages=True)
     ax = add_bells_and_whistles(ax, y_title=y_title, x_tick_gap=TICKGAP, x_lower_lim=0, y_lower_lim=0)
-    plot_and_save_single_metric(ax, list_of_all_data, list_of_all_methods, key=key, labelmap=labelmap, colormap=colormap, y_title=y_title, path=path, adoption_rate=adoption_rate, plot_percentages=True)
+    plot_and_save_single_metric(ax, list_of_all_data, list_of_all_methods, key=key, labelmap=labelmap, colormap=colormap, y_title=y_title, path=path, adoption_rate=adoption_rate, plot_percentages=True, save_tiff=True)
 
     ax, key = axs[1, 0], 'daily_prevalence'
     y_title = "Prevalence (%)"
@@ -159,7 +159,7 @@ def plot_and_save_epi_characteristics(list_of_all_data, list_of_all_methods, upt
     ax = plot_all(ax, list_of_all_data, list_of_all_methods, key=key, labelmap=labelmap, colormap=colormap, plot_percentages=True)
     ax = add_bells_and_whistles(ax, y_title="Quarantined agents (%)", x_tick_gap=TICKGAP, x_title="Days since outbreak",  legend_loc="upper left", y_lower_lim=0, x_lower_lim=0)
     # fig.suptitle(f"Quarantined agents in simulations of DCT methods @ {adoption_rate}% adoption rate", fontsize=TITLESIZE, y=1.05)
-    filepath = save_figure(fig, basedir=path, folder='episim_series', filename=f'quarantine_AR_{adoption_rate}')
+    filepath = save_figure(fig, basedir=path, folder='episim_series', filename=f'quarantine_AR_{adoption_rate}', save_tiff=True)
 
 def _extract_data(simulation_runs):
     """

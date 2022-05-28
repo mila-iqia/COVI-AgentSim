@@ -1,3 +1,4 @@
+
 import numpy as np
 import os
 import math
@@ -764,7 +765,8 @@ def load_plot_these_methods_config(path):
     if include_methods.exists():
         with open(str(include_methods), "rb") as f:
             plot_these_methods = yaml.safe_load(f)
-        return set([x for x, plot in plot_these_methods.items() if plot])
+        if plot_these_methods:
+            return set([x for x, plot in plot_these_methods.items() if plot])
 
     return {}
 
